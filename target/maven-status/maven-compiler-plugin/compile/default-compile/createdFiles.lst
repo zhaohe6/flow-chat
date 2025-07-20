@@ -1,0 +1,3 @@
+com\robod\flowchat\FlowChatApplication.class
+com\robod\flowchat\config\WebSocketConfig.class
+com\robod\flowchat\config\WebSocketServer.class

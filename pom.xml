@@ -30,6 +30,24 @@
         <java.version>17</java.version>
     </properties>
     <dependencies>
+<!--        mybatis-plus-->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <version>3.5.12</version>
+        </dependency>
+
+        <!--redis-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <!--这是fastjson的依赖-->
+        <dependency>
+            <groupId>com.alibaba.fastjson2</groupId>
+            <artifactId>fastjson2</artifactId>
+            <version>2.0.37</version>
+        </dependency>
 <!--        这是 websocket 的依赖-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -48,6 +66,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <version>1.18.36</version>
             <optional>true</optional>
         </dependency>
         <dependency>
@@ -67,6 +86,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>1.18.36</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

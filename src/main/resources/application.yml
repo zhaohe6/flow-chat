@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: chat-flow
+  data:
+    redis:
+      host: 117.72.65.13
+      port: 6379
+      password: 123456
+  datasource:
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://117.72.65.13:3306/chat-flow?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
