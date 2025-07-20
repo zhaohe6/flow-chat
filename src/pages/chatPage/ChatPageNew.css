@@ -1,0 +1,521 @@
+/* 微信风格聊天界面样式 */
+.wechat-container {
+  display: flex;
+  height: 100vh;
+  background-color: #f5f5f5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* 左侧边栏样式 */
+.sidebar {
+  width: 300px;
+  background-color: #2e3238;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e6e6e6;
+}
+
+/* 侧边栏头部 */
+.sidebar-header {
+  padding: 20px 16px;
+  background-color: #2e3238;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #3e4248;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  background-color: #07c160 !important;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.username {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.connection-status {
+  font-size: 12px;
+}
+
+.logout-btn {
+  color: #8b8b8b !important;
+  border: none;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.logout-btn:hover {
+  background-color: #3e4248 !important;
+  color: #ffffff !important;
+}
+
+/* 搜索区域 */
+.search-section {
+  padding: 12px 16px;
+  background-color: #2e3238;
+  border-bottom: 1px solid #3e4248;
+}
+
+.search-input {
+  background-color: #3e4248 !important;
+  border: none !important;
+  color: #ffffff;
+}
+
+.search-input::placeholder {
+  color: #8b8b8b;
+}
+
+.search-input .ant-input {
+  background-color: #3e4248 !important;
+  border: none !important;
+  color: #ffffff;
+}
+
+.search-input .ant-input:focus {
+  box-shadow: 0 0 0 2px rgba(7, 193, 96, 0.3) !important;
+}
+
+.search-input .anticon {
+  color: #8b8b8b;
+}
+
+/* 好友列表 */
+.friends-list {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #2e3238;
+}
+
+.friends-list .ant-list {
+  background-color: transparent;
+}
+
+.friends-list .ant-list-item {
+  border: none !important;
+  padding: 0 !important;
+}
+
+.friend-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #2e3238;
+  border-bottom: 1px solid #3e4248;
+}
+
+.friend-item:hover {
+  background-color: #3e4248;
+}
+
+.friend-item.selected {
+  background-color: #07c160;
+}
+
+.friend-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.friend-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.friend-name {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.friend-item.selected .friend-name {
+  color: #ffffff;
+}
+
+.last-message {
+  color: #8b8b8b;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-item.selected .last-message {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.friend-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.last-time {
+  color: #8b8b8b;
+  font-size: 11px;
+}
+
+.friend-item.selected .last-time {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 右侧聊天区域 */
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+}
+
+/* 聊天头部 */
+.chat-header {
+  height: 60px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e6e6e6;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.chat-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-info .friend-name {
+  color: #333333;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.online-status {
+  color: #8b8b8b;
+  font-size: 12px;
+}
+
+/* 消息容器 */
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+  padding: 20px;
+}
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.no-messages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8b8b8b;
+}
+
+/* 消息气泡 */
+.message-bubble {
+  display: flex;
+  max-width: 70%;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.message-bubble.sent {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-bubble.received {
+  align-self: flex-start;
+}
+
+.message-content {
+  position: relative;
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  word-break: break-word;
+}
+
+.message-bubble.sent .message-content {
+  background-color: #07c160;
+  color: #ffffff;
+}
+
+.message-bubble.sent .message-content::before {
+  content: '';
+  position: absolute;
+  right: -8px;
+  bottom: 8px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid #07c160;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+.message-bubble.received .message-content::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  bottom: 8px;
+  width: 0;
+  height: 0;
+  border-right: 8px solid #ffffff;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+.message-text {
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.message-time {
+  font-size: 11px;
+  opacity: 0.7;
+  text-align: right;
+}
+
+.message-bubble.received .message-time {
+  text-align: left;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+}
+
+/* 消息输入区域 */
+.message-input-area {
+  background-color: #ffffff;
+  border-top: 1px solid #e6e6e6;
+  padding: 12px 20px;
+}
+
+.input-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.input-toolbar .ant-btn {
+  border: none;
+  background: transparent;
+  color: #8b8b8b;
+  font-size: 18px;
+  padding: 4px 8px;
+}
+
+.input-toolbar .ant-btn:hover {
+  color: #07c160;
+  background-color: #f5f5f5;
+}
+
+.input-section {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.message-input {
+  flex: 1;
+  border: 1px solid #e6e6e6 !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  font-size: 14px;
+  resize: none;
+}
+
+.message-input:focus {
+  border-color: #07c160 !important;
+  box-shadow: 0 0 0 2px rgba(7, 193, 96, 0.1) !important;
+}
+
+.send-button {
+  background-color: #07c160 !important;
+  border-color: #07c160 !important;
+  border-radius: 6px !important;
+  height: auto !important;
+  padding: 8px 16px !important;
+  font-weight: 500;
+}
+
+.send-button:hover {
+  background-color: #06ad56 !important;
+  border-color: #06ad56 !important;
+}
+
+.send-button:disabled {
+  background-color: #d9d9d9 !important;
+  border-color: #d9d9d9 !important;
+}
+
+/* 未选择好友时的占位符 */
+.no-friend-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8b8b8b;
+}
+
+/* 滚动条样式 */
+.friends-list::-webkit-scrollbar,
+.messages-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.friends-list::-webkit-scrollbar-track,
+.messages-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.friends-list::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
+  border-radius: 4px;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 4px;
+}
+
+.friends-list::-webkit-scrollbar-thumb:hover,
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .wechat-container {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: 200px;
+  }
+  
+  .chat-area {
+    height: calc(100vh - 200px);
+  }
+  
+  .message-bubble {
+    max-width: 85%;
+  }
+  
+  .input-section {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .send-button {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 100%;
+  }
+  
+  .sidebar-header {
+    padding: 12px;
+  }
+  
+  .search-section {
+    padding: 8px 12px;
+  }
+  
+  .friend-item {
+    padding: 10px 12px;
+  }
+  
+  .chat-header {
+    padding: 0 12px;
+  }
+  
+  .messages-container {
+    padding: 12px;
+  }
+  
+  .message-input-area {
+    padding: 8px 12px;
+  }
+}
+
+/* Ant Design 组件样式覆盖 */
+.ant-list-item {
+  padding: 0 !important;
+  border: none !important;
+}
+
+.ant-badge-dot {
+  background-color: #07c160;
+}
+
+.ant-badge-count {
+  background-color: #ff4d4f;
+}
+
+.ant-empty-description {
+  color: #8b8b8b;
+}
+
+.ant-divider {
+  border-color: #3e4248 !important;
+}
+
+/* 动画效果 */
+.message-bubble {
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.friend-item {
+  transition: all 0.2s ease-in-out;
+}
+
+.send-button {
+  transition: all 0.2s ease-in-out;
+}
