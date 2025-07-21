@@ -27,7 +27,7 @@ public class WebSocketServer {
 
     private static RedisTemplate redisTemplate;
     private static MsgMapper msgMapper;
-    private static ConcurrentHashMap<String, Session> sessionPool = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, Session> sessionPool = new ConcurrentHashMap<>();
     @Autowired
     public void setRedisTemplate(RedisTemplate redisTemplate) {
         WebSocketServer.redisTemplate = redisTemplate;
@@ -45,16 +45,16 @@ public class WebSocketServer {
         log.info("WebSocket connection opened for user: {} pool size:{}", session.getRequestParameterMap(), sessionPool.size());
         sendMessage("系统消息",username, "欢迎来到FlowChat！请开始聊天吧！");
         // 查询redis中当前用户是否有未读消息
-        Long size = redisTemplate.opsForList().size(username + ":unread");
-        while (size > 0) {
-            // 如果有未读消息 就将未读消息取出
-            String unreadMessage = (String) redisTemplate.opsForList().rightPop(username + ":unread", 0, TimeUnit.SECONDS);
-            if (unreadMessage != null) {
-                session.getAsyncRemote().sendText(unreadMessage);
-                log.info("Sent unread message to user {}: {}", username, unreadMessage);
-            }
-            size--;
-        }
+//        Long size = redisTemplate.opsForList().size(username + ":unread");
+//        while (size > 0) {
+//            // 如果有未读消息 就将未读消息取出
+//            String unreadMessage = (String) redisTemplate.opsForList().rightPop(username + ":unread", 0, TimeUnit.SECONDS);
+//            if (unreadMessage != null) {
+//                session.getAsyncRemote().sendText(unreadMessage);
+//                log.info("Sent unread message to user {}: {}", username, unreadMessage);
+//            }
+//            size--;
+//        }
 
     }
     @OnMessage
@@ -94,7 +94,8 @@ public class WebSocketServer {
             log.warn("No WebSocket session found for user: {}", receiver);
             // 如果用户没有上线 就暂时把消息存储在 Redis 中 左侧进入 右侧取出
             try {
-                redisTemplate.opsForList().leftPush(receiver+":unread", message);
+//                redisTemplate.opsForHash().put("user:messages", receiver, message);
+                redisTemplate.opsForList().leftPush(receiver+":unread:"+sender, message);
                 log.info("Message stored in Redis for user {}: {}", receiver, message);
             }catch (Exception e) {
                 log.error("Failed to store message in Redis for user {}: {}", receiver, e.getMessage());
