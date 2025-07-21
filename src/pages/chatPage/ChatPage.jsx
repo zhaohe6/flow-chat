@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { v4 as uuidv4 } from 'uuid';
 import './ChatPage.css';
+import axios from 'axios';
 
 const { TextArea } = Input;
 
@@ -23,16 +24,41 @@ const ChatPage = ({ onLogout }) => {
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
     const [searchText, setSearchText] = useState('');
-
     // 模拟好友列表数据
-    const [friendsList] = useState([
+    const [friendsList,setFriendsList] = useState([
         { id: '1', name: '张三', avatar: null, lastMessage: '你好', lastTime: '10:30', unreadCount: 2, isOnline: true },
         { id: '2', name: '李四', avatar: null, lastMessage: '晚上一起吃饭吗？', lastTime: '昨天', unreadCount: 0, isOnline: true },
         { id: '3', name: '王五', avatar: null, lastMessage: '项目进展怎么样了', lastTime: '前天', unreadCount: 1, isOnline: false },
         { id: '4', name: '赵六', avatar: null, lastMessage: '周末约球', lastTime: '3天前', unreadCount: 0, isOnline: false },
         { id: '5', name: '小明', avatar: null, lastMessage: '收到', lastTime: '1周前', unreadCount: 0, isOnline: true },
     ]);
-
+    useEffect(()=>{
+        async function fetchFriendsList() {
+            try {
+                const response = await axios.get('http://localhost:8080/friendListAndLastMsg',
+                    { params: { username: localStorage.getItem('username') } }
+                ); // 假设有一个API可以获取好友列表
+                const resData = []
+                response.data.forEach(element => {
+                    resData.push({
+                        id: element.id,
+                        name: element.friendName,
+                        avatar: element.avatar || null,
+                        lastMessage: element.lastMessage || '',
+                        lastTime: element.lastTime || '',
+                        unreadCount: element.unreadCount || 0,
+                        isOnline: element.online || false
+                    });
+                });
+                setFriendsList(resData);
+                console.log('好友列表加载成功:', resData);
+            } catch (error) {
+                console.error('获取好友列表失败:', error);
+                message.error('加载好友列表失败，请稍后再试');
+            }
+        }
+        fetchFriendsList();
+    },[])
     // 滚动到消息底部
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -149,7 +175,9 @@ const ChatPage = ({ onLogout }) => {
 
     const handleFriendSelect = (friend) => {
         setSelectedFriend(friend);
-        // 清除未读消息计数（实际项目中应该发送已读状态到服务器）
+        // 清除未读消息计数（实际项目中应该发送已读状态到服务器
+        console.log(`已选择好友: ${friend.name}`);
+        // 这里请求和选定好友的消息历史
     };
 
     const handleLogout = () => {
