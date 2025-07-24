@@ -94,17 +94,39 @@ const ChatPage = ({ onLogout }) => {
             console.log('收到消息:', event.data);
             try {
                 const receivedMessage = JSON.parse(event.data);
+                console.log('解析后的消息对象:', receivedMessage);
                 
                 // 根据消息类型处理
                 if (receivedMessage.type === 'USER_LIST') {
                     setOnlineUsers(receivedMessage.users || []);
-                } else if (receivedMessage.type === 'CHAT_MESSAGE') {
-                    // 添加消息到对应好友的聊天记录中
+                } else if (receivedMessage.type === 'CHAT_MESSAGE' || 
+                          (receivedMessage.content && receivedMessage.sender && receivedMessage.receiver)) {
+                    // 处理聊天消息（包括有type字段的和没有type字段但有必要字段的消息）
+                    console.log('处理聊天消息:', receivedMessage);
                     const friendId = receivedMessage.sender === username ? receivedMessage.receiver : receivedMessage.sender;
-                    setMessageHistory(prev => ({
-                        ...prev,
-                        [friendId]: [...(prev[friendId] || []), receivedMessage]
-                    }));
+                    console.log('消息来自好友:', friendId);
+                    
+                    setMessageHistory(prev => {
+                        const currentMessages = prev[friendId] || [];
+                        
+                        // 检查消息是否已存在，避免重复添加
+                        const messageExists = currentMessages.some(msg => msg.id === receivedMessage.id);
+                        if (messageExists) {
+                            console.log('消息已存在，跳过添加');
+                            return prev;
+                        }
+                        
+                        // 对于实时收到的消息，直接添加到末尾
+                        const newMessages = [...currentMessages, receivedMessage];
+                        console.log('添加新消息后的消息列表:', newMessages);
+                        
+                        return {
+                            ...prev,
+                            [friendId]: newMessages
+                        };
+                    });
+                } else {
+                    console.log('未处理的消息类型:', receivedMessage);
                 }
             } catch (error) {
                 console.error('解析消息失败:', error);
@@ -143,20 +165,24 @@ const ChatPage = ({ onLogout }) => {
         }
 
         const newMessage = {
-            type: 'CHAT_MESSAGE',
             id: uuidv4(),
             content: messageText.trim(),
             sender: currentUser,
             receiver: selectedFriend.name,
-            timestamp: new Date().toLocaleTimeString(),
-            date: new Date().toLocaleDateString()
+            timestamp: new Date().toISOString().slice(0, 19) // ISO格式，去掉毫秒和时区信息
         };
 
         // 添加到本地消息历史
-        setMessageHistory(prev => ({
-            ...prev,
-            [selectedFriend.name]: [...(prev[selectedFriend.name] || []), newMessage]
-        }));
+        setMessageHistory(prev => {
+            const currentMessages = prev[selectedFriend.name] || [];
+            // 直接添加到末尾，不进行排序，确保新消息在最下面
+            const newMessages = [...currentMessages, newMessage];
+            
+            return {
+                ...prev,
+                [selectedFriend.name]: newMessages
+            };
+        });
 
         // 发送到服务器
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -172,12 +198,72 @@ const ChatPage = ({ onLogout }) => {
             handleSendMessage();
         }
     };
+    const requestMessageHistory = async (friendName) => {
+        if (!isConnected) {
+            message.error('连接已断开，请刷新页面重新连接');
+            return;
+        }
+        try {
+            // 获取我发给好友的消息
+            const msgFromMe = await axios.get('http://localhost:8080/getFriendMessage', {
+                params: {
+                    username: currentUser,
+                    friendName: friendName
+                }
+            });
+            
+            // 获取好友发给我的消息
+            const msgFromFriend = await axios.get('http://localhost:8080/getFriendMessage', {
+                params: {   
+                    username: friendName,
+                    friendName: currentUser
+                }
+            });
 
+            // 合并所有消息
+            let allMessages = [];
+            
+            if (msgFromMe.data.code === 200 && msgFromMe.data.data) {
+                allMessages = [...allMessages, ...msgFromMe.data.data];
+            }
+            
+            if (msgFromFriend.data.code === 200 && msgFromFriend.data.data) {
+                allMessages = [...allMessages, ...msgFromFriend.data.data];
+            }
+
+            // 按时间排序所有消息（最早的在前，最新的在后）
+            allMessages.sort((a, b) => {
+                const dateA = new Date(a.timestamp);
+                const dateB = new Date(b.timestamp);
+                const result = dateA - dateB;
+                return result;
+            });
+
+            // 去重处理，防止重复消息
+            const uniqueMessages = allMessages.filter((msg, index, self) => 
+                index === self.findIndex(m => m.id === msg.id)
+            );
+
+            // 更新消息历史
+            setMessageHistory(prev => ({
+                ...prev,
+                [friendName]: uniqueMessages
+            }));
+
+            console.log('合并并排序后的消息历史:', uniqueMessages);
+
+        } catch (error) {
+            console.error('获取消息历史失败:', error);
+            message.error('网络错误，请稍后重试');
+        }
+    }
     const handleFriendSelect = (friend) => {
         setSelectedFriend(friend);
         // 清除未读消息计数（实际项目中应该发送已读状态到服务器
         console.log(`已选择好友: ${friend.name}`);
-        // 这里请求和选定好友的消息历史
+        // 这里请求和选定好友的消息历史     
+        requestMessageHistory(friend.name);
+
     };
 
     const handleLogout = () => {
@@ -312,7 +398,9 @@ const ChatPage = ({ onLogout }) => {
                                         <div key={msg.id || index} className={`message-bubble ${msg.sender === currentUser ? 'sent' : 'received'}`}>
                                             <div className="message-content">
                                                 <div className="message-text">{msg.content}</div>
-                                                <div className="message-time">{msg.timestamp}</div>
+                                                <div className="message-time">
+                                                    {new Date(msg.timestamp).toLocaleTimeString()}
+                                                </div>
                                             </div>
                                             <Avatar 
                                                 size={32} 
