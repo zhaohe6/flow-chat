@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.context.support.SpringBeanAutowiringSupport;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,23 +47,15 @@ public class WebSocketServer {
         log.info("WebSocket connection opened for user: {} pool size:{}", session.getRequestParameterMap(), sessionPool.size());
         sendMessage("系统消息",username, "欢迎来到FlowChat！请开始聊天吧！");
         // 查询redis中当前用户是否有未读消息
-//        Long size = redisTemplate.opsForList().size(username + ":unread");
-//        while (size > 0) {
-//            // 如果有未读消息 就将未读消息取出
-//            String unreadMessage = (String) redisTemplate.opsForList().rightPop(username + ":unread", 0, TimeUnit.SECONDS);
-//            if (unreadMessage != null) {
-//                session.getAsyncRemote().sendText(unreadMessage);
-//                log.info("Sent unread message to user {}: {}", username, unreadMessage);
-//            }
-//            size--;
-//        }
+
 
     }
     @OnMessage
     public void onMessage(String message, Session session) {
         log.info("Received message! session:{}, message:{}", session.getRequestParameterMap(), message);
         MsgEntity msgEntity = JSON.parseObject(message, MsgEntity.class);
-        msgEntity.setTimestamp(java.time.LocalDateTime.now());
+        // 设置为 ISO 8601 格式的时间戳
+        msgEntity.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
         // 查看消息的接收方 将消息推送给接收方
         sendMessage(msgEntity.getSender(), msgEntity.getReceiver(), msgEntity.getContent());
         // 将消息存储到数据库中

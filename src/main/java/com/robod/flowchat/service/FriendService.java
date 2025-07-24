@@ -30,12 +30,10 @@ public class FriendService {
                                 String key = item.getUsername() + ":unread:" + item.getFriendName();
                                 Long size = redisTemplate.opsForList().size(key);
                                 item.setUnreadCount(size == null ? 0 : size.intValue());
-//                                log.info("<UNK>{}<UNK>{}", key, item.getUnreadCount());
                                 if(size != null && size.intValue() > 0) {
                                     MsgEntity msgEntity = JSON.parseObject((String) redisTemplate.opsForList().index(key, 0), MsgEntity.class);
                                     item.setLastMessage(msgEntity.getContent());
                                 }
-
                             }catch (Exception e){
                                 log.error("Error retrieving unread messages for user {} and friend {}: {}", item.getUsername(), item.getFriendName(), e.getMessage());
                             }

@@ -6,8 +6,11 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Transient;
 
+import javax.print.attribute.standard.MediaSize;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.UUID;
 
@@ -16,6 +19,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @TableName("t_message")
 public class MsgEntity {
+
     @TableId
     private String id = UUID.randomUUID().toString();
 
@@ -29,5 +33,5 @@ public class MsgEntity {
     private String content ="空消息";
 
     @TableField("timestamp")
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
 }

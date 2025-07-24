@@ -10,10 +10,10 @@ import org.springframework.stereotype.Component;
 @Builder
 @Data
 @NoArgsConstructor
-public class ResponseBody {
+public class ResponseBody<T> {
     private int code; // 响应状态码
     private String message; // 响应消息
-    private Object data; // 响应数据
+    private T data; // 响应数据
 
     public ResponseBody(int code, String message) {
         this.code = code;
@@ -21,7 +21,7 @@ public class ResponseBody {
         this.data = null; // 默认data为null
     }
 
-    public ResponseBody(int code, String message, Object data) {
+    public ResponseBody(int code, String message, T data) {
         this.code = code;
         this.message = message;
         this.data = data;

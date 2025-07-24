@@ -17,6 +17,11 @@ import java.util.List;
 public class FriendController {
     @Autowired
     private FriendService friendService;
+    /**
+     * 获取用户的好友列表和最后一条消息
+     * @param username 用户名
+     * @return 好友列表和最后一条消息的列表
+     */
     @GetMapping("/friendListAndLastMsg")
     public List<FriendListVO> getFriendListAndLastMsg(String username) {
         List<FriendListVO> friendListAndLastMsg = friendService.getFriendListAndLastMsg(username);

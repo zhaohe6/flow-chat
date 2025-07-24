@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.springframework.data.repository.init.ResourceReader.Type.JSON;
 
 @Service
 public class MessageService {
@@ -22,10 +21,20 @@ public class MessageService {
         List<MsgEntity> friendMessage = msgMapper.getFriendMessage(username, friendName);
         try{
             String key = username + ":unread:" + friendName;
-            Long totalSize = redisTemplate.opsForList().size(key);
-            List<MsgEntity> redisMsg = (List<MsgEntity>) redisTemplate.opsForList().rightPop(key, totalSize)
-                    .stream().map(msg -> com.alibaba.fastjson2.JSON.parseObject((String) msg, MsgEntity.class))
+            // 从redis中查询这个key是否存在
+            if(!redisTemplate.hasKey(key)) {
+                // 如果不存在，则直接返回查询结果
+                return friendMessage;
+            }
+//            Long totalSize = redisTemplate.opsForList().size(key);
+//            List<MsgEntity> redisMsg = (List<MsgEntity>) redisTemplate.opsForList().rightPop(key, totalSize)
+//                    .stream().map(msg -> com.alibaba.fastjson2.JSON.parseObject((String) msg, MsgEntity.class))
+//                    .collect(Collectors.toList());
+            List<String> msgs = redisTemplate.opsForList().range(key, 0, -1);
+            List<MsgEntity> redisMsg = msgs.stream()
+                    .map(msg -> JSON.parseObject(msg, MsgEntity.class))
                     .collect(Collectors.toList());
+            redisTemplate.delete(key);
             if(redisMsg != null && !redisMsg.isEmpty()) {
                 // 将redis中的未读消息添加到查询结果中
                 friendMessage.addAll(redisMsg);
