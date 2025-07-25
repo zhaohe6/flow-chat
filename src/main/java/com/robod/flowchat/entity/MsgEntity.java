@@ -19,7 +19,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @TableName("t_message")
 public class MsgEntity {
-
+    public enum MsgType {
+        CHAT_MESSAGE,  //聊天消息
+        HEART_BEAT //心跳包
+    }
     @TableId
     private String id = UUID.randomUUID().toString();
 
@@ -34,4 +37,20 @@ public class MsgEntity {
 
     @TableField("timestamp")
     private String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
+
+    @TableField("type")
+    private MsgType type = MsgType.CHAT_MESSAGE;
+
+
+    public MsgEntity(String sender, String username, String s) {
+        this.sender = sender;
+        this.receiver = username;
+        this.content = s;
+    }
+    public MsgEntity(String sender, String receiver, String content,MsgType type) {
+        this.sender = sender;
+        this.receiver = receiver;
+        this.content = content;
+        this.type = type;
+    }
 }

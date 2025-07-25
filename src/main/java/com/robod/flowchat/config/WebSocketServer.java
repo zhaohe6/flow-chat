@@ -41,23 +41,27 @@ public class WebSocketServer {
     @OnOpen
     public void onOpen(Session session, EndpointConfig endpointConfig) {
         // 添加发送者的 id
-
         String username = session.getRequestParameterMap().get("username").get(0);
         sessionPool.put(username, session);
         log.info("WebSocket connection opened for user: {} pool size:{}", session.getRequestParameterMap(), sessionPool.size());
-        sendMessage("系统消息",username, "欢迎来到FlowChat！请开始聊天吧！");
-        // 查询redis中当前用户是否有未读消息
-
+        sendMessage(new MsgEntity("系统消息",username, "欢迎来到FlowChat！请开始聊天吧！"));
 
     }
     @OnMessage
     public void onMessage(String message, Session session) {
         log.info("Received message! session:{}, message:{}", session.getRequestParameterMap(), message);
+
         MsgEntity msgEntity = JSON.parseObject(message, MsgEntity.class);
+        // 如果消息内容时 PING 说明是心跳 就不用就行后续的处理
+        if (MsgEntity.MsgType.HEART_BEAT.equals(msgEntity.getType())) {
+            log.info("================== Received PING message =====================");
+            sendMessage(new MsgEntity("system", msgEntity.getSender(), "PONG", MsgEntity.MsgType.HEART_BEAT));
+            return;
+        }
         // 设置为 ISO 8601 格式的时间戳
         msgEntity.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
         // 查看消息的接收方 将消息推送给接收方
-        sendMessage(msgEntity.getSender(), msgEntity.getReceiver(), msgEntity.getContent());
+        sendMessage(msgEntity);
         // 将消息存储到数据库中
         try {
             msgMapper.insert(msgEntity);
@@ -68,36 +72,35 @@ public class WebSocketServer {
     }
     @OnClose
     public void onClose(CloseReason closeReason,Session session) {
-        String userId = session.getId();
-        sessionPool.remove(userId);
-        log.info("WebSocket connection closed for user: {} pool size:{}", userId, sessionPool.size());
+//        String userId = session.getId();
+        String username = session.getRequestParameterMap().get("username").get(0);
+        sessionPool.remove(username);
+        log.info("WebSocket connection closed for user: {} pool size:{}", username, sessionPool.size());
     }
     @OnError
     public void onError(Throwable throwable) {
         log.error("WebSocket connection error for user: {} pool size:{}", sessionPool.size(), throwable.getMessage());
     }
-    public void sendMessage(String sender,String receiver, String message) {
+//    String sender,String receiver, String message
+    public void sendMessage(MsgEntity message) {
 
-        MsgEntity msgEntity = new MsgEntity();
-        msgEntity.setSender(sender);
-        msgEntity.setReceiver(receiver);
-        msgEntity.setContent(message);
-        message = JSON.toJSONString(msgEntity);
+        String sender = message.getSender();
+        String receiver = message.getReceiver();
+        String messageJsonStr = JSON.toJSONString(message);
 
-        if (!sessionPool.containsKey(receiver)) {
+        if (!sessionPool.containsKey(receiver) && !MsgEntity.MsgType.HEART_BEAT.equals(message.getType())) {
             log.warn("No WebSocket session found for user: {}", receiver);
             // 如果用户没有上线 就暂时把消息存储在 Redis 中 左侧进入 右侧取出
             try {
-//                redisTemplate.opsForHash().put("user:messages", receiver, message);
-                redisTemplate.opsForList().leftPush(receiver+":unread:"+sender, message);
-                log.info("Message stored in Redis for user {}: {}", receiver, message);
+                redisTemplate.opsForList().leftPush(receiver+":unread:"+sender, messageJsonStr);
+                log.info("Message stored in Redis for user {}: {}", receiver, messageJsonStr);
             }catch (Exception e) {
                 log.error("Failed to store message in Redis for user {}: {}", receiver, e.getMessage());
             }
             return;
         }
 
-        sessionPool.get(receiver).getAsyncRemote().sendText(message);
-        log.info("{} Sent message to user {}: {}",sender, receiver, message);
+        sessionPool.get(receiver).getAsyncRemote().sendText(messageJsonStr);
+        log.info("{} Sent message to user {}: {}",sender, receiver, messageJsonStr);
     }
 }
