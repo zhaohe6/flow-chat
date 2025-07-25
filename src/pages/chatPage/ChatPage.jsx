@@ -14,6 +14,24 @@ import axios from 'axios';
 
 const { TextArea } = Input;
 
+// 消息类型枚举
+const MESSAGE_TYPE = {
+    CHAT_MESSAGE: 'CHAT_MESSAGE', // 聊天消息
+    HEART_BEAT: 'HEART_BEAT'      // 心跳消息
+};
+
+/**
+ * 消息格式说明:
+ * {
+ *   type: MESSAGE_TYPE.CHAT_MESSAGE | MESSAGE_TYPE.HEART_BEAT,
+ *   id: string,
+ *   content: string,
+ *   sender: string,
+ *   receiver: string,
+ *   timestamp: string (ISO格式)
+ * }
+ */
+
 const ChatPage = ({ onLogout }) => {
     const wsRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -83,11 +101,29 @@ const ChatPage = ({ onLogout }) => {
         const token = localStorage.getItem('token') || 'default_token';
         const ws = new WebSocket(`ws://localhost:8080/websocket?token=${token}&username=${username}`);
         wsRef.current = ws;
+        let heartbeatInterval;
         
         ws.onopen = () => {
             console.log('WebSocket连接已建立');
             setIsConnected(true);
             message.success('连接成功');
+            const heartBeat = {
+                type: MESSAGE_TYPE.HEART_BEAT,
+                id: uuidv4(),
+                content: "PING",
+                sender: localStorage.getItem('username') || 'system',
+                receiver: "system",
+                timestamp: new Date().toISOString().slice(0, 19) // ISO格式，去掉毫秒和时区信息
+            };
+            // 设置心跳
+            heartbeatInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    console.log("timestamp:", new Date().toISOString());
+                    console.log('发送心跳消息格式:', heartBeat);
+                    ws.send(JSON.stringify(heartBeat));
+                }
+            }, 10000); // 每20秒发送一次心跳
+
         };
         
         ws.onmessage = (event) => {
@@ -99,7 +135,11 @@ const ChatPage = ({ onLogout }) => {
                 // 根据消息类型处理
                 if (receivedMessage.type === 'USER_LIST') {
                     setOnlineUsers(receivedMessage.users || []);
-                } else if (receivedMessage.type === 'CHAT_MESSAGE' || 
+                    console.log('在线用户列表更新:', receivedMessage.users);
+                } else if (receivedMessage.type === MESSAGE_TYPE.HEART_BEAT) {
+                    // 处理心跳消息，通常不需要显示给用户
+                    console.log('收到心跳回复');
+                } else if (receivedMessage.type === MESSAGE_TYPE.CHAT_MESSAGE || 
                           (receivedMessage.content && receivedMessage.sender && receivedMessage.receiver)) {
                     // 处理聊天消息（包括有type字段的和没有type字段但有必要字段的消息）
                     console.log('处理聊天消息:', receivedMessage);
@@ -147,6 +187,9 @@ const ChatPage = ({ onLogout }) => {
         
         // 清理函数
         return () => {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+            }
             if (ws.readyState === WebSocket.OPEN) {
                 ws.close();
             }
@@ -165,6 +208,7 @@ const ChatPage = ({ onLogout }) => {
         }
 
         const newMessage = {
+            type: MESSAGE_TYPE.CHAT_MESSAGE,
             id: uuidv4(),
             content: messageText.trim(),
             sender: currentUser,
@@ -186,6 +230,7 @@ const ChatPage = ({ onLogout }) => {
 
         // 发送到服务器
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            console.log('发送消息格式:', newMessage);
             wsRef.current.send(JSON.stringify(newMessage));
         }
 
@@ -326,6 +371,9 @@ const ChatPage = ({ onLogout }) => {
                         onChange={(e) => setSearchText(e.target.value)}
                         className="search-input"
                     />
+                    <div className="online-users-count">
+                        在线用户: {onlineUsers.length}
+                    </div>
                 </div>
 
                 {/* 好友列表 */}

@@ -99,6 +99,16 @@
   color: #94a3b8;
 }
 
+.online-users-count {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  padding: 4px 8px;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+}
+
 .search-input .ant-input {
   background-color: #f8fafc !important;
   border: none !important;
