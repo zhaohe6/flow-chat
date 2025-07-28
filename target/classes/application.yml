@@ -14,3 +14,10 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
+
+#logging:
+#  file:
+#    path: ./log
+#    name: flow-chat.log
+#  level:
+#    root: info

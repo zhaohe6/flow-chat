@@ -11,3 +11,11 @@
     2. 针对Redis添加try-catch捕获异常，否则会导致websocket之间断开连接
 ### Todo
     Redis中的消息和数据库的消息重复 导致消息显示重复
+
+
+{"type":"HEART_BEAT",
+"id":"910633fe-b718-4979-a68e-4ccbc253f073",
+"content":"PING","sender":"lixiaolu",
+"receiver":"system",
+"timestamp":"2025-07-28T05:55:25"}
+

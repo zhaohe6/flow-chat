@@ -24,7 +24,7 @@ public class FriendService {
         friendListAndLastMsg
                         .forEach(item -> {
                             // 设置在线状态
-                            item.setOnline(WebSocketServer.sessionPool.containsKey(item.getUsername()));
+                            item.setOnline(WebSocketServer.sessionCaffeine.asMap().containsKey(item.getUsername()));
                             // 从redis中获取一下未读消息数
                             try {
                                 String key = item.getUsername() + ":unread:" + item.getFriendName();

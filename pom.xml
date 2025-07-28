@@ -30,9 +30,14 @@
         <java.version>17</java.version>
     </properties>
     <dependencies>
+        <!-- 本地缓存之王Caffeine -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
 
 
-<!--        mybatis-plus-->
+        <!--        mybatis-plus-->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>

@@ -1,6 +1,10 @@
 package com.robod.flowchat.config;
 
 import com.alibaba.fastjson2.JSON;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Expiry;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.robod.flowchat.entity.MsgEntity;
 import com.robod.flowchat.mapper.MsgMapper;
 import jakarta.annotation.Resource;
@@ -8,6 +12,7 @@ import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.index.qual.NonNegative;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -15,6 +20,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.context.support.SpringBeanAutowiringSupport;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Enumeration;
@@ -29,7 +35,35 @@ public class WebSocketServer {
 
     private static RedisTemplate redisTemplate;
     private static MsgMapper msgMapper;
-    public static ConcurrentHashMap<String, Session> sessionPool = new ConcurrentHashMap<>();
+
+    public static Cache<String, Session> sessionCaffeine = Caffeine.newBuilder()
+                                            .expireAfter(new Expiry<String, Session>() {
+                                                @Override
+                                                public long expireAfterCreate(String s, Session session, long currentTime) {
+                                                    return TimeUnit.MINUTES.toNanos(10);
+                                                }
+                                                @Override
+                                                public long expireAfterUpdate(String s, Session session, long currentTime, @NonNegative long currentDuration) {
+                                                    return currentDuration;
+                                                }
+
+                                                @Override
+                                                public long expireAfterRead(String s, Session session, long currentTime, @NonNegative long currentDuration) {
+                                                    return currentDuration;
+                                                }
+                                            })
+                                            .removalListener((key,session,cause) -> {
+                                                if(cause == RemovalCause.EXPIRED){
+                                                    // 这个应该关闭session
+                                                    try {
+                                                        session.close(new CloseReason(CloseReason.CloseCodes.GOING_AWAY, "Connection idle closed by caffeine"));
+                                                    } catch (IOException e) {
+                                                        throw new RuntimeException(e);
+                                                    }
+                                                }
+                                            })
+                                            .build();
+
     @Autowired
     public void setRedisTemplate(RedisTemplate redisTemplate) {
         WebSocketServer.redisTemplate = redisTemplate;
@@ -42,10 +76,10 @@ public class WebSocketServer {
     public void onOpen(Session session, EndpointConfig endpointConfig) {
         // 添加发送者的 id
         String username = session.getRequestParameterMap().get("username").get(0);
-        sessionPool.put(username, session);
-        log.info("WebSocket connection opened for user: {} pool size:{}", session.getRequestParameterMap(), sessionPool.size());
+        sessionCaffeine.put(username, session);
+        log.info("WebSocket connection opened for user: {} pool size:{}", session.getRequestParameterMap(), sessionCaffeine.estimatedSize());
         sendMessage(new MsgEntity("系统消息",username, "欢迎来到FlowChat！请开始聊天吧！"));
-
+        redisTemplate.opsForValue().set("onlineUser", sessionCaffeine.estimatedSize());
     }
     @OnMessage
     public void onMessage(String message, Session session) {
@@ -56,6 +90,8 @@ public class WebSocketServer {
         if (MsgEntity.MsgType.HEART_BEAT.equals(msgEntity.getType())) {
             log.info("================== Received PING message =====================");
             sendMessage(new MsgEntity("system", msgEntity.getSender(), "PONG", MsgEntity.MsgType.HEART_BEAT));
+            // 如果时 PING 就刷新一下缓存 相当于续费时间
+            sessionCaffeine.put(msgEntity.getSender(), session);
             return;
         }
         // 设置为 ISO 8601 格式的时间戳
@@ -71,15 +107,19 @@ public class WebSocketServer {
         }
     }
     @OnClose
-    public void onClose(CloseReason closeReason,Session session) {
+    public void onClose(CloseReason closeReason,Session session) throws IOException {
 //        String userId = session.getId();
         String username = session.getRequestParameterMap().get("username").get(0);
-        sessionPool.remove(username);
-        log.info("WebSocket connection closed for user: {} pool size:{}", username, sessionPool.size());
+//        sessionPool.remove(username);
+        // 切换 caffeine 之后应该手动移除 session 否则一直等待超时之后才会移除
+        sessionCaffeine.invalidate(username);
+        session.close(new CloseReason(CloseReason.CloseCodes.GOING_AWAY, "Connection idle closed by caffeine"));
+        log.info("WebSocket connection closed for user: {} pool size:{}", username, sessionCaffeine.estimatedSize());
+        redisTemplate.opsForValue().set("onlineUser", sessionCaffeine.estimatedSize());
     }
     @OnError
     public void onError(Throwable throwable) {
-        log.error("WebSocket connection error for user: {} pool size:{}", sessionPool.size(), throwable.getMessage());
+        log.error("WebSocket connection error for user: {} pool size:{}", sessionCaffeine.estimatedSize(), throwable.getMessage());
     }
 //    String sender,String receiver, String message
     public void sendMessage(MsgEntity message) {
@@ -88,7 +128,7 @@ public class WebSocketServer {
         String receiver = message.getReceiver();
         String messageJsonStr = JSON.toJSONString(message);
 
-        if (!sessionPool.containsKey(receiver) && !MsgEntity.MsgType.HEART_BEAT.equals(message.getType())) {
+        if (!sessionCaffeine.asMap().containsKey(receiver) && !MsgEntity.MsgType.HEART_BEAT.equals(message.getType())) {
             log.warn("No WebSocket session found for user: {}", receiver);
             // 如果用户没有上线 就暂时把消息存储在 Redis 中 左侧进入 右侧取出
             try {
@@ -100,7 +140,7 @@ public class WebSocketServer {
             return;
         }
 
-        sessionPool.get(receiver).getAsyncRemote().sendText(messageJsonStr);
+        sessionCaffeine.getIfPresent(receiver).getAsyncRemote().sendText(messageJsonStr);
         log.info("{} Sent message to user {}: {}",sender, receiver, messageJsonStr);
     }
 }
