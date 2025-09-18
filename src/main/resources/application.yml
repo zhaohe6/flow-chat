@@ -11,13 +11,27 @@ spring:
     password: zhaoserver666
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://117.72.65.13:3306/chat-flow?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+  rabbitmq:
+    host: 117.72.65.13
+    port: 5672
+    username: zhaohe
+    password: 123456
+    virtual-host: flow-chat
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-
+jwt:
+  secret: 7x3A9TbRqPq6zV8eWfY2vQ1sG4nMkLp0oIxY5vRtN6cU7hXjZlA==  # 替换为你自己生成的密钥
 #logging:
 #  file:
 #    path: ./log
 #    name: flow-chat.log
 #  level:
 #    root: info
+#spring.rabbitmq.host=10.2.1.231
+#spring.rabbitmq.port=5672
+#spring.rabbitmq.username=zhangweizhong
+#spring.rabbitmq.password=weizhong1988
+#spring.rabbitmq.virtualHost=order
+
+

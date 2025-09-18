@@ -13,6 +13,7 @@ import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 import lombok.extern.slf4j.Slf4j;
 import org.checkerframework.checker.index.qual.NonNegative;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -26,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -33,8 +35,11 @@ import java.util.concurrent.TimeUnit;
 @ServerEndpoint("/websocket")
 public class WebSocketServer {
 
-    private static RedisTemplate redisTemplate;
+    private static RedisTemplate<String,Object> redisTemplate;
     private static MsgMapper msgMapper;
+    private static RabbitTemplate  rabbitTemplate;
+    private static RedisTemplate<String,Long> redisTemplateLong;
+//    ConcurrentHashMap<String, Session> sessions = new ConcurrentHashMap<>();// cas compare and swap
 
     public static Cache<String, Session> sessionCaffeine = Caffeine.newBuilder()
                                             .expireAfter(new Expiry<String, Session>() {
@@ -65,12 +70,20 @@ public class WebSocketServer {
                                             .build();
 
     @Autowired
-    public void setRedisTemplate(RedisTemplate redisTemplate) {
+    public void setRedisTemplate(RedisTemplate<String,Object> redisTemplate) {
         WebSocketServer.redisTemplate = redisTemplate;
     }
     @Autowired
     public void setMsgMapper(MsgMapper msgMapper) {
         WebSocketServer.msgMapper = msgMapper;
+    }
+    @Autowired
+    public void setRabbitTemplate(RabbitTemplate rabbitTemplate) {
+        WebSocketServer.rabbitTemplate = rabbitTemplate;
+    }
+    @Autowired
+    public void setRedisTemplateLong(RedisTemplate<String,Long> redisTemplateLong) {
+        WebSocketServer.redisTemplateLong = redisTemplateLong;
     }
     @OnOpen
     public void onOpen(Session session, EndpointConfig endpointConfig) {
@@ -79,7 +92,7 @@ public class WebSocketServer {
         sessionCaffeine.put(username, session);
         log.info("WebSocket connection opened for user: {} pool size:{}", session.getRequestParameterMap(), sessionCaffeine.estimatedSize());
         sendMessage(new MsgEntity("系统消息",username, "欢迎来到FlowChat！请开始聊天吧！"));
-        redisTemplate.opsForValue().set("onlineUser", sessionCaffeine.estimatedSize());
+        redisTemplateLong.opsForValue().set("onlineUser", sessionCaffeine.estimatedSize());
     }
     @OnMessage
     public void onMessage(String message, Session session) {
@@ -99,11 +112,12 @@ public class WebSocketServer {
         // 查看消息的接收方 将消息推送给接收方
         sendMessage(msgEntity);
         // 将消息存储到数据库中
-        try {
-            msgMapper.insert(msgEntity);
-            log.info("Message stored in database: {}", msgEntity);
-        } catch (Exception e) {
-            log.error("Failed to store message in database: {}", e.getMessage());
+        log.info("================= 准备将学习存储在MySQL中 =====================");
+        try{
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME,"chat01.saveToMySQL",msgEntity);
+
+        }catch (Exception e){
+            log.error("<UNK>MySQL<UNK>",e);
         }
     }
     @OnClose
@@ -127,7 +141,6 @@ public class WebSocketServer {
         String sender = message.getSender();
         String receiver = message.getReceiver();
         String messageJsonStr = JSON.toJSONString(message);
-
         if (!sessionCaffeine.asMap().containsKey(receiver) && !MsgEntity.MsgType.HEART_BEAT.equals(message.getType())) {
             log.warn("No WebSocket session found for user: {}", receiver);
             // 如果用户没有上线 就暂时把消息存储在 Redis 中 左侧进入 右侧取出

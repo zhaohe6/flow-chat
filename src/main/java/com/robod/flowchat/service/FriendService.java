@@ -18,7 +18,9 @@ public class FriendService {
     @Autowired
     private FriendMapper friendMapper;
     @Autowired
-    private RedisTemplate redisTemplate;
+    private RedisTemplate<String,Object> redisTemplate;
+//    @Autowired
+//    private RedisTemplate<String,Long> redisTemplateLong;
     public List<FriendListVO> getFriendListAndLastMsg(String username) {
         List<FriendListVO> friendListAndLastMsg = friendMapper.getFriendList(username);
         friendListAndLastMsg

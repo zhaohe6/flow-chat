@@ -66,7 +66,7 @@ public class RedisConfig {
         // 设置所有值的序列化器
         template.setValueSerializer(longSerializer);
         template.setHashValueSerializer(longSerializer);
-        template.setDefaultSerializer(longSerializer); // 关键！设置默认序列化
+//        template.setDefaultSerializer(longSerializer); // 关键！设置默认序列化
 
         template.afterPropertiesSet();
         return template;
