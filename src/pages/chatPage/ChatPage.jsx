@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo, useContext } from 'react';
 import { message, Button, Avatar, Input, List, Badge, Divider, Tooltip, Empty } from 'antd';
-import { 
-    UserOutlined, 
-    LogoutOutlined, 
+import AddFrients from '../../components/addFriends/AddFriends';
+import {
+    UserOutlined,
+    LogoutOutlined,
     SendOutlined,
     SmileOutlined,
     PictureOutlined,
@@ -11,6 +12,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import './ChatPage.css';
 import axios from 'axios';
+import { MyContext } from '../../App';
 
 const { TextArea } = Input;
 
@@ -43,18 +45,23 @@ const ChatPage = ({ onLogout }) => {
     const [isConnected, setIsConnected] = useState(false);
     const [searchText, setSearchText] = useState('');
     // 模拟好友列表数据
-    const [friendsList,setFriendsList] = useState([
+    const [friendsList, setFriendsList] = useState([
         { id: '1', name: '张三', avatar: null, lastMessage: '你好', lastTime: '10:30', unreadCount: 2, isOnline: true },
         { id: '2', name: '李四', avatar: null, lastMessage: '晚上一起吃饭吗？', lastTime: '昨天', unreadCount: 0, isOnline: true },
         { id: '3', name: '王五', avatar: null, lastMessage: '项目进展怎么样了', lastTime: '前天', unreadCount: 1, isOnline: false },
         { id: '4', name: '赵六', avatar: null, lastMessage: '周末约球', lastTime: '3天前', unreadCount: 0, isOnline: false },
         { id: '5', name: '小明', avatar: null, lastMessage: '收到', lastTime: '1周前', unreadCount: 0, isOnline: true },
     ]);
-    useEffect(()=>{
+    const { des, message: msgFromContext } = useContext(MyContext);
+    useEffect(() => {
+        console.log(`message from context des:${des},msg:${msgFromContext}`)
         async function fetchFriendsList() {
             try {
                 const response = await axios.get('http://localhost:8080/friendListAndLastMsg',
-                    { params: { username: localStorage.getItem('username') } }
+                    {
+                        params: { username: localStorage.getItem('username') },
+                        withCredentials: true
+                    }
                 ); // 假设有一个API可以获取好友列表
                 const resData = []
                 response.data.forEach(element => {
@@ -68,6 +75,15 @@ const ChatPage = ({ onLogout }) => {
                         isOnline: element.online || false
                     });
                 });
+                resData.unshift({
+                    id: "agent",
+                    name: "小智聊天",
+                    avatar: null,
+                    lastMessage: '你好，我是智能聊天机器人',
+                    lastTime: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+                    unreadCount: 0,
+                    isOnline: true
+                })
                 setFriendsList(resData);
                 console.log('好友列表加载成功:', resData);
             } catch (error) {
@@ -76,7 +92,7 @@ const ChatPage = ({ onLogout }) => {
             }
         }
         fetchFriendsList();
-    },[])
+    }, [])
     // 滚动到消息底部
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -102,7 +118,7 @@ const ChatPage = ({ onLogout }) => {
         const ws = new WebSocket(`ws://localhost:8080/websocket?token=${token}&username=${username}`);
         wsRef.current = ws;
         let heartbeatInterval;
-        
+
         ws.onopen = () => {
             console.log('WebSocket连接已建立');
             setIsConnected(true);
@@ -125,13 +141,13 @@ const ChatPage = ({ onLogout }) => {
             }, 10000); // 每20秒发送一次心跳
 
         };
-        
+
         ws.onmessage = (event) => {
             console.log('收到消息:', event.data);
             try {
                 const receivedMessage = JSON.parse(event.data);
                 console.log('解析后的消息对象:', receivedMessage);
-                
+
                 // 根据消息类型处理
                 if (receivedMessage.type === 'USER_LIST') {
                     setOnlineUsers(receivedMessage.users || []);
@@ -139,27 +155,27 @@ const ChatPage = ({ onLogout }) => {
                 } else if (receivedMessage.type === MESSAGE_TYPE.HEART_BEAT) {
                     // 处理心跳消息，通常不需要显示给用户
                     console.log('收到心跳回复');
-                } else if (receivedMessage.type === MESSAGE_TYPE.CHAT_MESSAGE || 
-                          (receivedMessage.content && receivedMessage.sender && receivedMessage.receiver)) {
+                } else if (receivedMessage.type === MESSAGE_TYPE.CHAT_MESSAGE ||
+                    (receivedMessage.content && receivedMessage.sender && receivedMessage.receiver)) {
                     // 处理聊天消息（包括有type字段的和没有type字段但有必要字段的消息）
                     console.log('处理聊天消息:', receivedMessage);
                     const friendId = receivedMessage.sender === username ? receivedMessage.receiver : receivedMessage.sender;
                     console.log('消息来自好友:', friendId);
-                    
+
                     setMessageHistory(prev => {
                         const currentMessages = prev[friendId] || [];
-                        
+
                         // 检查消息是否已存在，避免重复添加
                         const messageExists = currentMessages.some(msg => msg.id === receivedMessage.id);
                         if (messageExists) {
                             console.log('消息已存在，跳过添加');
                             return prev;
                         }
-                        
+
                         // 对于实时收到的消息，直接添加到末尾
                         const newMessages = [...currentMessages, receivedMessage];
                         console.log('添加新消息后的消息列表:', newMessages);
-                        
+
                         return {
                             ...prev,
                             [friendId]: newMessages
@@ -172,19 +188,19 @@ const ChatPage = ({ onLogout }) => {
                 console.error('解析消息失败:', error);
             }
         };
-        
+
         ws.onclose = () => {
             console.log('WebSocket连接已关闭');
             setIsConnected(false);
             message.warning('连接已断开');
         };
-        
+
         ws.onerror = (error) => {
             console.error('WebSocket错误:', error);
             setIsConnected(false);
             message.error('连接出现错误');
         };
-        
+
         // 清理函数
         return () => {
             if (heartbeatInterval) {
@@ -221,7 +237,7 @@ const ChatPage = ({ onLogout }) => {
             const currentMessages = prev[selectedFriend.name] || [];
             // 直接添加到末尾，不进行排序，确保新消息在最下面
             const newMessages = [...currentMessages, newMessage];
-            
+
             return {
                 ...prev,
                 [selectedFriend.name]: newMessages
@@ -256,10 +272,10 @@ const ChatPage = ({ onLogout }) => {
                     friendName: friendName
                 }
             });
-            
+
             // 获取好友发给我的消息
             const msgFromFriend = await axios.get('http://localhost:8080/getFriendMessage', {
-                params: {   
+                params: {
                     username: friendName,
                     friendName: currentUser
                 }
@@ -267,11 +283,11 @@ const ChatPage = ({ onLogout }) => {
 
             // 合并所有消息
             let allMessages = [];
-            
+
             if (msgFromMe.data.code === 200 && msgFromMe.data.data) {
                 allMessages = [...allMessages, ...msgFromMe.data.data];
             }
-            
+
             if (msgFromFriend.data.code === 200 && msgFromFriend.data.data) {
                 allMessages = [...allMessages, ...msgFromFriend.data.data];
             }
@@ -285,7 +301,7 @@ const ChatPage = ({ onLogout }) => {
             });
 
             // 去重处理，防止重复消息
-            const uniqueMessages = allMessages.filter((msg, index, self) => 
+            const uniqueMessages = allMessages.filter((msg, index, self) =>
                 index === self.findIndex(m => m.id === msg.id)
             );
 
@@ -315,26 +331,54 @@ const ChatPage = ({ onLogout }) => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.close();
         }
-        
+
         localStorage.removeItem('username');
         localStorage.removeItem('token');
         localStorage.removeItem('loginTime');
-        
+
         message.success('已退出登录');
         onLogout();
     };
-
     // 过滤好友列表
-    const filteredFriends = friendsList.filter(friend =>
-        friend.name.toLowerCase().includes(searchText.toLowerCase())
-    );
+    const filteredFriends = useMemo(() => {
 
-    // 获取当前选中好友的消息历史
+        if (!searchText.trim()) {
+            return friendsList;
+        }
+        return friendsList.filter(friend => {
+            if (friend.id === "agent") {
+                // 这是智能聊天机器人
+                return true;
+            }
+            if (friend.id === "online-search") {
+                // 这是一个全网搜索的标志 这个标志不会过滤掉 主要是为了让用户查询不到好友的时候可以全网搜索好友
+                return true;
+            }
+            let filteredResult = friend.name.toLowerCase().includes(searchText.toLowerCase())
+            if (!filteredResult) {
+                // 表示没有查询到任何好友 那么就显示 全网所有好友信息
+            }
+            return filteredResult
+
+        }
+
+        );
+    }, [friendsList, searchText])
     const currentMessages = selectedFriend ? (messageHistory[selectedFriend.name] || []) : [];
-
+    const [displayAddFrientWindow, setDisplayAddFrientWindown] = useState(false)
+    const addFrient = useCallback((payload) => {
+        setDisplayAddFrientWindown(true);
+        console.log("添加好友按钮被点击" + payload)
+    }, [])
     return (
         <div className="wechat-container">
             {/* 左侧边栏 */}
+            {
+                displayAddFrientWindow && (
+                    <div className='addFriends-window'>
+                        <AddFrients title="添加好友子组件" info={{ age: "liming" }} />
+                    </div>)
+            }
             <div className="sidebar">
                 {/* 用户信息头部 */}
                 <div className="sidebar-header">
@@ -343,17 +387,17 @@ const ChatPage = ({ onLogout }) => {
                         <div className="user-details">
                             <div className="username">{currentUser}</div>
                             <div className="connection-status">
-                                <Badge 
-                                    status={isConnected ? 'success' : 'error'} 
+                                <Badge
+                                    status={isConnected ? 'success' : 'error'}
                                     text={isConnected ? '在线' : '离线'}
                                 />
                             </div>
                         </div>
                     </div>
                     <Tooltip title="退出登录">
-                        <Button 
-                            type="text" 
-                            icon={<LogoutOutlined />} 
+                        <Button
+                            type="text"
+                            icon={<LogoutOutlined />}
                             onClick={handleLogout}
                             className="logout-btn"
                         />
@@ -387,8 +431,8 @@ const ChatPage = ({ onLogout }) => {
                             >
                                 <div className="friend-info">
                                     <Badge dot={friend.isOnline} offset={[-8, 8]}>
-                                        <Avatar 
-                                            size={44} 
+                                        <Avatar
+                                            size={44}
                                             icon={<UserOutlined />}
                                             style={{ backgroundColor: friend.isOnline ? '#3b82f6' : '#94a3b8' }}
                                         />
@@ -408,6 +452,9 @@ const ChatPage = ({ onLogout }) => {
                         )}
                     />
                 </div>
+                <div className='buttom-bar'>
+                    <Button type='primary' onClick={() => addFrient("zhangsan")}>添加好友</Button>
+                </div>
             </div>
 
             {/* 右侧聊天区域 */}
@@ -417,8 +464,8 @@ const ChatPage = ({ onLogout }) => {
                         {/* 聊天头部 */}
                         <div className="chat-header">
                             <div className="chat-title">
-                                <Avatar 
-                                    size={36} 
+                                <Avatar
+                                    size={36}
                                     icon={<UserOutlined />}
                                     style={{ backgroundColor: selectedFriend.isOnline ? '#3b82f6' : '#94a3b8' }}
                                 />
@@ -436,7 +483,7 @@ const ChatPage = ({ onLogout }) => {
                             <div className="messages-list">
                                 {currentMessages.length === 0 ? (
                                     <div className="no-messages">
-                                        <Empty 
+                                        <Empty
                                             description="还没有消息，开始聊天吧！"
                                             image={Empty.PRESENTED_IMAGE_SIMPLE}
                                         />
@@ -450,8 +497,8 @@ const ChatPage = ({ onLogout }) => {
                                                     {new Date(msg.timestamp).toLocaleTimeString()}
                                                 </div>
                                             </div>
-                                            <Avatar 
-                                                size={32} 
+                                            <Avatar
+                                                size={32}
                                                 icon={<UserOutlined />}
                                                 className="message-avatar"
                                             />
@@ -478,7 +525,7 @@ const ChatPage = ({ onLogout }) => {
                                     className="message-input"
                                     disabled={!isConnected}
                                 />
-                                <Button 
+                                <Button
                                     type="primary"
                                     icon={<SendOutlined />}
                                     onClick={handleSendMessage}
@@ -492,7 +539,7 @@ const ChatPage = ({ onLogout }) => {
                     </>
                 ) : (
                     <div className="no-friend-selected">
-                        <Empty 
+                        <Empty
                             description="请选择一个好友开始聊天"
                             image={Empty.PRESENTED_IMAGE_SIMPLE}
                         />

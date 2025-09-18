@@ -52,10 +52,7 @@ const LoginPage = ({ onLoginSuccess }) => {
         
         // 简单的模拟验证逻辑
         const validUsers = [
-            { username: 'admin', password: '123456' },
-            { username: 'user1', password: 'password' },
-            { username: 'test', password: 'test123' },
-            { username: 'zhao', password: '123456' }
+            { username: 'zhao', password: 'zhao123' }
         ];
         
         const user = validUsers.find(
@@ -82,15 +79,20 @@ const LoginPage = ({ onLoginSuccess }) => {
     // 真实的API调用示例（注释掉的代码）
     const realApiLogin = async (credentials) => {
         try {
-            const response = await axios.post('http://localhost:8080/login', {
-                username: credentials.username,
-                password: credentials.password
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+            const params = new URLSearchParams();
+            params.append('username', credentials.username);
+            params.append('password', credentials.password);
+            const response = await axios.post(
+                'http://localhost:8080/login',
+                params,
+                {
+                    withCredentials: true,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
                 }
-            });
+            );
+            console.log('登录响应:', response);
             return response.data;
         } catch (error) {
             throw error;
@@ -212,6 +214,7 @@ const LoginPage = ({ onLoginSuccess }) => {
                             >
                                 {loading ? '登录中...' : '登录'}
                             </Button>
+
                         </Form.Item>
                     </Form>
 
